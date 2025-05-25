@@ -1,6 +1,7 @@
 package com.jubilant_disco.service.JubliantDisco.service;
 
 import com.jubilant_disco.service.JubliantDisco.engine.RuleEvaluationEngine;
+import com.jubilant_disco.service.JubliantDisco.model.EnvConfig;
 import com.jubilant_disco.service.JubliantDisco.model.EvaluationResult;
 import com.jubilant_disco.service.JubliantDisco.model.FeatureFlag;
 import com.jubilant_disco.service.JubliantDisco.model.Result;
@@ -8,6 +9,7 @@ import com.jubilant_disco.service.JubliantDisco.repo.FeatureFlagRepo;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
@@ -59,17 +61,21 @@ public class FeatureFlagService {
         return possibleFlag.map(Result::success).orElseGet(() -> Result.failure("Could not find this feature flag " + id));
     }
 
-    public Result<EvaluationResult> evaluateRules(UUID id, Map<String, Object> context) {
+    public Result<EvaluationResult> evaluateRules(UUID id, String env, Map<String, Object> context) {
         Result<FeatureFlag> result = getById(id);
         if (result.isFailure()) {
             return Result.failure(result.errorMsg());
         }
         FeatureFlag flag = result.data();
-        return flag.getRules().stream()
+        EnvConfig config = flag.getEnvironments().getOrDefault(env, null);
+        if (Objects.isNull(config)) {
+            return Result.failure("We do not have this env");
+        }
+        return config.rules().stream()
                 .map(rule -> ruleEvaluationEngine.evaluate(rule, context))
                 .filter(EvaluationResult::enabled)
                 .findFirst()
                 .map(Result::success)
-                .orElseGet(() -> Result.success(new EvaluationResult(false, flag.getDefaultValue())));
+                .orElseGet(() -> Result.success(new EvaluationResult(false, config.defaultValue())));
     }
 }

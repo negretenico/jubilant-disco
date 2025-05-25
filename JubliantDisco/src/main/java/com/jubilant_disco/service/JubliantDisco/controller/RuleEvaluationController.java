@@ -18,12 +18,13 @@ public class RuleEvaluationController {
         this.featureFlagService = featureFlagService;
     }
 
-    @PostMapping(value = "/{id}")
+    @PostMapping(value = "/{id}/evaluate/{env}")
     public ResponseEntity<Result<EvaluationResult>> evaluateFlag(
             @PathVariable UUID id,
+            @PathVariable String env,
             @RequestBody Map<String, Object> contextParams
     ) {
-        Result<EvaluationResult> result = featureFlagService.evaluateRules(id, contextParams);
+        Result<EvaluationResult> result = featureFlagService.evaluateRules(id, env, contextParams);
         if (result.isFailure()) {
             return ResponseEntity.badRequest().body(result);
         }
