@@ -1,7 +1,9 @@
 package com.jubilant_disco.service.JubliantDisco.controller;
 
-import com.fasterxml.jackson.databind.JsonMappingException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jubilant_disco.service.JubliantDisco.model.FeatureFlag;
 import com.jubilant_disco.service.JubliantDisco.model.Result;
 import com.jubilant_disco.service.JubliantDisco.service.FeatureFlagService;
@@ -10,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/api/v1/feature-flags")
@@ -33,11 +35,18 @@ public class FeatureFlagController {
     }
 
     @PatchMapping(value = "/{id}", consumes = {MediaType.APPLICATION_JSON_VALUE}, produces = {MediaType.APPLICATION_JSON_VALUE})
-    public ResponseEntity<FeatureFlag> updateFlag(@PathVariable UUID id, @RequestBody FeatureFlag updateFlag) {
-        Consumer<FeatureFlag> patcher = (flag) -> {
+    public ResponseEntity<FeatureFlag> updateFlag(@PathVariable UUID id, @RequestBody JsonNode updateJson) {
+        Function<FeatureFlag, FeatureFlag> patcher = (featureFlag) -> {
             try {
-                simpleObjectMapper.updateValue(flag, updateFlag);
-            } catch (JsonMappingException e) {
+                ObjectNode existingNode = simpleObjectMapper.valueToTree(featureFlag);
+
+                // Only merge fields that were actually present in the request
+                updateJson.fields().forEachRemaining(entry -> {
+                    existingNode.set(entry.getKey(), entry.getValue());
+                });
+
+                return simpleObjectMapper.treeToValue(existingNode, FeatureFlag.class);
+            } catch (JsonProcessingException e) {
                 throw new RuntimeException(e);
             }
         };

@@ -1,20 +1,25 @@
 package com.jubilant_disco.service.JubliantDisco.service;
 
+import com.jubilant_disco.service.JubliantDisco.engine.RuleEvaluationEngine;
+import com.jubilant_disco.service.JubliantDisco.model.EvaluationResult;
 import com.jubilant_disco.service.JubliantDisco.model.FeatureFlag;
 import com.jubilant_disco.service.JubliantDisco.model.Result;
 import com.jubilant_disco.service.JubliantDisco.repo.FeatureFlagRepo;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Function;
 
 @Service
 public class FeatureFlagService {
     FeatureFlagRepo featureFlags;
+    RuleEvaluationEngine ruleEvaluationEngine;
 
-    public FeatureFlagService(FeatureFlagRepo featureFlags) {
+    public FeatureFlagService(FeatureFlagRepo featureFlags, RuleEvaluationEngine ruleEvaluationEngine) {
         this.featureFlags = featureFlags;
+        this.ruleEvaluationEngine = ruleEvaluationEngine;
     }
 
     public Result<FeatureFlag> save(FeatureFlag featureFlag) {
@@ -26,15 +31,15 @@ public class FeatureFlagService {
         }
     }
 
-    public Result<FeatureFlag> update(UUID id, Consumer<FeatureFlag> updater) {
+    public Result<FeatureFlag> update(UUID id, Function<FeatureFlag, FeatureFlag> updater) {
         Optional<FeatureFlag> possibleFlag = featureFlags.findById(id);
         if (possibleFlag.isEmpty()) {
             return Result.failure(String.format("Could not find flag with id={%s}", id));
         }
         FeatureFlag flag = possibleFlag.get();
-        updater.accept(flag);
+        var updatedFlag = updater.apply(flag);
         try {
-            return Result.success(featureFlags.save(flag));
+            return Result.success(featureFlags.save(updatedFlag));
         } catch (Exception e) {
             return Result.failure(e.getLocalizedMessage());
         }
@@ -52,5 +57,19 @@ public class FeatureFlagService {
     public Result<FeatureFlag> getById(UUID id) {
         Optional<FeatureFlag> possibleFlag = featureFlags.findById(id);
         return possibleFlag.map(Result::success).orElseGet(() -> Result.failure("Could not find this feature flag " + id));
+    }
+
+    public Result<EvaluationResult> evaluateRules(UUID id, Map<String, Object> context) {
+        Result<FeatureFlag> result = getById(id);
+        if (result.isFailure()) {
+            return Result.failure(result.errorMsg());
+        }
+        FeatureFlag flag = result.data();
+        return flag.getRules().stream()
+                .map(rule -> ruleEvaluationEngine.evaluate(rule, context))
+                .filter(EvaluationResult::enabled)
+                .findFirst()
+                .map(Result::success)
+                .orElseGet(() -> Result.success(new EvaluationResult(false, flag.getDefaultValue())));
     }
 }
