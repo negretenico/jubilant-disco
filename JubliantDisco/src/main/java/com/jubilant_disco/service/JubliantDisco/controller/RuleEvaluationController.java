@@ -6,7 +6,6 @@ import com.jubilant_disco.service.JubliantDisco.service.FeatureFlagService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -19,15 +18,15 @@ public class RuleEvaluationController {
         this.featureFlagService = featureFlagService;
     }
 
-    @GetMapping(value = "/{id}")
-    public ResponseEntity<EvaluationResult> evaluateFlag(
+    @PostMapping(value = "/{id}")
+    public ResponseEntity<Result<EvaluationResult>> evaluateFlag(
             @PathVariable UUID id,
-            @RequestParam Map<String, String> contextParams
+            @RequestBody Map<String, Object> contextParams
     ) {
-        Result<EvaluationResult> result = featureFlagService.evaluateRules(id, new HashMap<>(contextParams));
+        Result<EvaluationResult> result = featureFlagService.evaluateRules(id, contextParams);
         if (result.isFailure()) {
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(result);
         }
-        return ResponseEntity.ok(result.data());
+        return ResponseEntity.ok(result);
     }
 }
