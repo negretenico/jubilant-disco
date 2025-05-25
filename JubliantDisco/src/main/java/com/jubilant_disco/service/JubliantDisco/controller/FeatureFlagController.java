@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -69,4 +70,12 @@ public class FeatureFlagController {
         return ResponseEntity.ok(flagResult.data());
     }
 
+    @GetMapping
+    public ResponseEntity<List<FeatureFlag>> getAllFlags() {
+        Result<List<FeatureFlag>> flags = featureFlagService.getAll();
+        if (flags.isFailure()) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(flags.data());
+    }
 }

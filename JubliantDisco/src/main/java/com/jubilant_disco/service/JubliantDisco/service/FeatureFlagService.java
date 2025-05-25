@@ -8,10 +8,7 @@ import com.jubilant_disco.service.JubliantDisco.model.Result;
 import com.jubilant_disco.service.JubliantDisco.repo.FeatureFlagRepo;
 import org.springframework.stereotype.Service;
 
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Function;
 
 @Service
@@ -59,6 +56,14 @@ public class FeatureFlagService {
     public Result<FeatureFlag> getById(UUID id) {
         Optional<FeatureFlag> possibleFlag = featureFlags.findById(id);
         return possibleFlag.map(Result::success).orElseGet(() -> Result.failure("Could not find this feature flag " + id));
+    }
+
+    public Result<List<FeatureFlag>> getAll() {
+        try {
+            return Result.success(featureFlags.findAll());
+        } catch (Exception e) {
+            return Result.failure("We could not get the flags");
+        }
     }
 
     public Result<EvaluationResult> evaluateRules(UUID id, String env, Map<String, Object> context) {
