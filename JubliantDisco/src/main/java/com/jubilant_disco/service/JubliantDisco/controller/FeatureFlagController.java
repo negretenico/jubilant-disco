@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jubilant_disco.service.JubliantDisco.model.FeatureFlag;
+import com.jubilant_disco.service.JubliantDisco.model.FeatureFlagSubset;
 import com.jubilant_disco.service.JubliantDisco.model.Result;
 import com.jubilant_disco.service.JubliantDisco.service.FeatureFlagService;
 import org.springframework.http.MediaType;
@@ -71,11 +72,11 @@ public class FeatureFlagController {
     }
 
     @GetMapping
-    public ResponseEntity<List<FeatureFlag>> getAllFlags() {
+    public ResponseEntity<List<FeatureFlagSubset>> getAllFlags() {
         Result<List<FeatureFlag>> flags = featureFlagService.getAll();
         if (flags.isFailure()) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(flags.data());
+        return ResponseEntity.ok(flags.data().stream().map(flag -> new FeatureFlagSubset(flag.getId(), flag.getFlagName())).toList());
     }
 }
